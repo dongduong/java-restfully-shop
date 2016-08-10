@@ -1,0 +1,210 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>nl.infodation</groupId>
+	<artifactId>blobstore.app</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<packaging>war</packaging>
+
+
+	<properties>
+		<hl.server.ipaddress>10.4.1.212</hl.server.ipaddress>
+		<!-- maven-compiler-plugin -->
+		<maven.compiler.target>1.8</maven.compiler.target>
+		<maven.compiler.source>${maven.compiler.target}</maven.compiler.source>
+
+		<!-- Explicitly declaring the source encoding eliminates the following 
+			message: Using platform encoding (UTF-8 actually) to copy filtered resources, 
+			i.e. build is platform dependent! -->
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+		<endorsed.dir>${project.build.directory}/endorsed</endorsed.dir>
+
+		<!-- JBoss dependency versions -->
+
+		<version.wildfly.maven.plugin>1.0.2.Final</version.wildfly.maven.plugin>
+
+		<!-- Define the version of the JBoss BOMs we want to import to specify 
+			tested stacks. -->
+		<version.jboss.bom>8.2.1.Final</version.jboss.bom>
+		<version.wildfly>10.0.0.Alpha1</version.wildfly>
+
+
+		<!-- other plugin versions -->
+		<version.compiler.plugin>3.1</version.compiler.plugin>
+		<version.ear.plugin>2.10</version.ear.plugin>
+		<version.ejb.plugin>2.3</version.ejb.plugin>
+		<version.surefire.plugin>2.16</version.surefire.plugin>
+		<version.war.plugin>2.5</version.war.plugin>
+
+	</properties>
+
+	<dependencyManagement>
+		<dependencies>
+			<!-- JBoss distributes a complete set of Java EE 7 APIs including a Bill 
+				of Materials (BOM). A BOM specifies the versions of a "stack" (or a collection) 
+				of artifacts. We use this here so that we always get the correct versions 
+				of artifacts. Here we use the jboss-javaee-7.0-with-tools stack (you can 
+				read this as the JBoss stack of the Java EE 7 APIs, with some extras tools 
+				for your project, such as Arquillian for testing) and the jboss-javaee-7.0-with-hibernate 
+				stack you can read this as the JBoss stack of the Java EE 7 APIs, with extras 
+				from the Hibernate family of projects) -->
+			<dependency>
+				<groupId>org.wildfly.bom</groupId>
+				<artifactId>jboss-javaee-7.0-with-tools</artifactId>
+				<version>${version.jboss.bom}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>org.wildfly.bom</groupId>
+				<artifactId>jboss-javaee-7.0-with-hibernate</artifactId>
+				<version>${version.jboss.bom}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
+	<dependencies>
+		<dependency>
+			<groupId>javax</groupId>
+			<artifactId>javaee-api</artifactId>
+			<version>7.0</version>
+		</dependency>
+		
+		<!-- Arquillian allows you to test enterprise code such as EJBs and Transactional(JTA) 
+			JPA from JUnit/TestNG -->
+		<dependency>
+			<groupId>org.jboss.arquillian.junit</groupId>
+			<artifactId>arquillian-junit-container</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.jboss.arquillian.protocol</groupId>
+			<artifactId>arquillian-protocol-servlet</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<resources>
+			<resource>
+				<directory>src/main/java</directory>
+				<excludes>
+					<exclude>**/*.java</exclude>
+				</excludes>
+			</resource>
+			<resource>
+				<directory>src/main/resources</directory>
+				<excludes>
+					<exclude>**/*.java</exclude>
+				</excludes>
+			</resource>
+		</resources>
+		<plugins>
+			<plugin>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.5.1</version>
+				<configuration>
+					<source>1.8</source>
+					<target>1.8</target>
+				</configuration>
+			</plugin>
+			<plugin>
+				<artifactId>maven-war-plugin</artifactId>
+				<version>2.6</version>
+				<configuration>
+					<warSourceDirectory>WebContent</warSourceDirectory>
+					<failOnMissingWebXml>false</failOnMissingWebXml>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.flywaydb</groupId>
+				<artifactId>flyway-maven-plugin</artifactId>
+				<version>3.2.1</version>
+				<!-- config in flyway.properties -->
+			</plugin>
+			<!-- <plugin> <groupId>org.codehaus.mojo</groupId> <artifactId>build-helper-maven-plugin</artifactId> 
+				<version>1.9.1</version> <executions> Add a new source directory to our build 
+				<execution> <id>add-integration-test-sources</id> <phase>generate-test-sources</phase> 
+				<goals> <goal>add-test-source</goal> </goals> <configuration> Configures 
+				the source directory of our integration tests <sources> <source>src/integration-test/java</source> 
+				</sources> </configuration> </execution> </executions> </plugin> -->
+			<plugin>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>${version.surefire.plugin}</version>
+				<configuration>
+					<skip>${skip.unit.tests}</skip>
+					<!-- Excludes integration tests when unit tests are run -->
+					<excludes>
+						<exclude>**/*IntegrationTest.*</exclude>
+					</excludes>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-failsafe-plugin</artifactId>
+				<version>2.18</version>
+				<configuration>
+					<encoding>UTF-8</encoding>
+					<!-- https://dzone.com/articles/separating-integration-and -->
+					<reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
+					<argLine>${jacoco.agent.argLine}</argLine>
+				</configuration>
+				<executions>
+					<!-- Invokes both the integration-test and the verify goals of the Failsafe 
+						Maven plugin -->
+					<execution>
+						<id>integration-test</id>
+						<goals>
+							<goal>integration-test</goal>
+							<goal>verify</goal>
+						</goals>
+						<configuration>
+							<!-- Skips integration tests if the value of skip.integration.tests 
+								property is true -->
+							<skipTests>${skip.integration.tests}</skipTests>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<!-- https://dzone.com/articles/separating-integration-and Compute integration 
+				test coverage for Sonar BEWARE: Sonar doesn't run the verify phase, it has 
+				to be forced by setting -Dsonar.phase=verify -->
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>0.7.5.201505241946</version>
+				<configuration>
+					<propertyName>jacoco.agent.argLine</propertyName>
+					<!-- default: argLine -->
+					<includes>
+						<include>com/comoyo/**</include>
+					</includes>
+					<!-- agent -->
+					<destFile>${project.build.directory}/jacoco-integration.exec</destFile>
+					<!-- report -->
+					<dataFile>${project.build.directory}/jacoco-integration.exec</dataFile>
+				</configuration>
+				<executions>
+					<execution>
+						<id>agent</id>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>report</id>
+						<phase>site</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+</project>
